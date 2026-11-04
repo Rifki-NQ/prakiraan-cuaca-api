@@ -75,12 +75,16 @@ class ETLQuery:
         await self._close_etl_db()
 
     def get_forecast_by_range(
-        self, adm4_code: str, datetime_range: tuple[datetime, datetime]
+        self,
+        adm4_code: str,
+        datetime_range: tuple[datetime, datetime],
+        limit: int | None,
     ) -> AsyncIterable[Row[Any]]:
         """Return Iterable of weather forecast rows if the range is valid."""
         start_dt, end_dt = datetime_range
         if start_dt > end_dt:
             raise InvalidDatetimeRangeError(start_dt, end_dt)
+        logger.debug(f"yielding forecasts: {start_dt} to {end_dt}")
 
         async def _results() -> AsyncIterable[Row[Any]]:
             """
@@ -99,6 +103,7 @@ class ETLQuery:
                         ),
                     )
                     .order_by(db.forecast_table.c.forecast_datetime)
+                    .limit(limit)
                 )
                 result = await conn.stream(
                     stmt, execution_options={"yield_per": self.RESULT_YIELD_PER_VALUE}

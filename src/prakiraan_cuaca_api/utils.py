@@ -21,17 +21,9 @@ def setup_datetime(
 
 
 async def merge_forecasts(
-    forecasts_iterable: AsyncIterable[Row[Any]], limit: int
+    forecasts_iterable: AsyncIterable[Row[Any]],
 ) -> list[dict[str, str | int | float | datetime | None]]:
     """
-    Iterate over the forecasts_iterable, append it to a list then return
-    the list after either the iterable is exhausted
-    or when the limit reaches 0.
+    Return a list of forecast dicts from the forecasts_iterable.
     """
-    merged: list[dict[str, str | int | float | datetime | None]] = []
-    async for forecast in forecasts_iterable:
-        if limit == 0:
-            break
-        merged.append(forecast._asdict())
-        limit -= 1
-    return merged
+    return [f._asdict() async for f in forecasts_iterable]
