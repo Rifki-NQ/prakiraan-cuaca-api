@@ -1,11 +1,17 @@
+import logging
 from collections.abc import AsyncIterable
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import Row
 
+from prakiraan_cuaca_api.exceptions import EmptyQueryResultError
 from prakiraan_cuaca_api.models.data_models import DatetimeModel
+
+logger = logging.getLogger(__name__)
 
 
 def setup_datetime(
@@ -27,3 +33,22 @@ async def merge_forecasts(
     Return a list of forecast dicts from the forecasts_iterable.
     """
     return [f._asdict() async for f in forecasts_iterable]
+
+
+def register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(EmptyQueryResultError)
+    async def forecast_not_found(
+        request: Request, exc: EmptyQueryResultError
+    ) -> JSONResponse:
+        logger.debug(f"EmptyQueryResultError, detail: {exc!r}")
+        return JSONResponse(
+            status_code=404,
+            content={
+                "message": exc.args[0],
+                "query": {
+                    "adm4_code": exc.query["adm4_code"],
+                    "start_dt": exc.query["start_dt"],
+                    "end_dt": exc.query["end_dt"],
+                },
+            },
+        )
