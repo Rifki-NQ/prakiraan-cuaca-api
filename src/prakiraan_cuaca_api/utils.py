@@ -44,11 +44,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=404,
             content={
-                "message": exc.args[0],
-                "query": {
-                    "adm4_code": exc.query["adm4_code"],
-                    "start_dt": exc.query["start_dt"],
-                    "end_dt": exc.query["end_dt"],
-                },
+                "message": exc.message,
+                "queries": {k: v for k, v in exc.query.items()},
             },
         )
