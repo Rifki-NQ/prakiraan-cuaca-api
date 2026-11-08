@@ -19,8 +19,13 @@ def get_etl_query() -> ETLQueryProtocol:
     return etl_query
 
 
+Adm4CodeParam = Annotated[
+    str, Path(pattern=r"^\d{2}\.\d{2}\.\d{2}\.\d{4}$", examples=["32.16.21.2003"])
+]
+
+
 def get_forecast_params(
-    adm4_code: Annotated[str, Path(pattern=r"^\d{2}\.\d{2}\.\d{2}\.\d{4}$", examples=["32.16.21.2003"])],
+    adm4_code: Adm4CodeParam,
     limit: Annotated[int, Query(gt=0)] | None = None,
 ) -> ForecastParamsModel:
     return ForecastParamsModel(adm4_code, limit)
@@ -30,6 +35,20 @@ ForecastRows = dict[str, str | int | float | datetime | None]
 EtlQuery = Annotated[ETLQueryProtocol, Depends(get_etl_query)]
 ForecastParams = Annotated[ForecastParamsModel, Depends(get_forecast_params)]
 DatetimeRangeQuery = Annotated[DatetimeRangeQueryModel, Query()]
+
+
+@router.get("/{adm4_code}")
+async def get_forecast_location(
+    etl_query: EtlQuery, adm4_code: Adm4CodeParam
+) -> dict[str, str | int | float]:
+    """
+    Get forecast location information.
+
+    Path Parameters:
+        adm4_code: Indonesia's administrative area code,
+                   down to the village level
+    """
+    return (await etl_query.get_forecast_location(adm4_code))._asdict()
 
 
 @router.get("/{adm4_code}/today")

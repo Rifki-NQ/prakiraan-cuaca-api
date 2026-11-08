@@ -116,14 +116,31 @@ class ETLQuery:
                     total_yielded += 1
                 if total_yielded == 0:
                     raise EmptyQueryResultError(
+                        "Forecast not found",
                         {
                             "adm4_code": adm4_code,
                             "start_dt": start_dt.strftime("%d-%m-%Y %H:%M:%S"),
                             "end_dt": end_dt.strftime("%d-%m-%Y %H:%M:%S"),
-                        }
+                        },
                     )
 
         return _results()
+
+    async def get_forecast_location(self, adm4_code: str) -> Row[Any]:
+        """
+        Return forecast location based on the given adm4_code,
+        raise error if there is more than one row result,
+        because adm4_code is meant to be unique code.
+        """
+        db = self._get_etl_db()
+        async with db.engine.connect() as conn:
+            stmt = select(db.location_table).where(
+                db.location_table.c.adm4_code == adm4_code
+            )
+            row_result = (await conn.execute(stmt)).one_or_none()
+        if row_result is None:
+            raise EmptyQueryResultError("Location not found", {"adm4_code": adm4_code})
+        return row_result
 
     def _get_etl_db(self) -> ETLDBContext:
         """get the db attributes, can be called after setup_etl_db()."""
