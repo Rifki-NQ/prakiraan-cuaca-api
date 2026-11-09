@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import Row
 
-from prakiraan_cuaca_api.exceptions import EmptyQueryResultError
+from prakiraan_cuaca_api.exceptions import AppError, EmptyQueryResultError
 from prakiraan_cuaca_api.models.data_models import DatetimeModel
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ async def merge_forecasts(
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(EmptyQueryResultError)
-    async def forecast_not_found(
+    async def empty_query_result_handler(
         request: Request, exc: EmptyQueryResultError
     ) -> JSONResponse:
         logger.debug(f"EmptyQueryResultError, detail: {exc!r}")
@@ -47,4 +47,22 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "message": exc.message,
                 "queries": {k: v for k, v in exc.query.items()},
             },
+        )
+
+    @app.exception_handler(AppError)
+    async def unhandled_app_error_handler(
+        request: Request, exc: AppError
+    ) -> JSONResponse:
+        logger.error(f"Unexpected app error, detail: {exc!r}", exc_info=exc)
+        return JSONResponse(
+            status_code=500, content={"detail": "Internal server error"}
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
+        logger.error(f"Unexpected error, detail: {exc!r}", exc_info=exc)
+        return JSONResponse(
+            status_code=500, content={"detail": "Internal server error"}
         )
