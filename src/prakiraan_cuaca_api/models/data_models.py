@@ -1,8 +1,5 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Self
-
-from pydantic import BaseModel, model_validator
 
 
 @dataclass
@@ -31,22 +28,3 @@ class DatetimeModel:
     def full_day(self) -> tuple[datetime, datetime]:
         """Return a tuple of self.current_datetime_start and self.current_datetime_end"""
         return (self.current_datetime_start, self.current_datetime_end)
-
-
-@dataclass(frozen=True)
-class ForecastParamsModel:
-    adm4_code: str
-    limit: int | None
-
-
-class DatetimeRangeQueryModel(BaseModel):
-    model_config = {"extra": "forbid"}
-
-    start: datetime
-    end: datetime
-
-    @model_validator(mode="after")
-    def end_must_be_grater_or_equal_to_start(self) -> Self:
-        if self.start > self.end:
-            raise ValueError("end must be grater or equal to start")
-        return self

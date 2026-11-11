@@ -6,19 +6,15 @@ from fastapi.openapi import docs
 from fastapi.responses import HTMLResponse
 
 from prakiraan_cuaca_api.config import API_TIMEZONE
-from prakiraan_cuaca_api.deps import etl_query
-from prakiraan_cuaca_api.models.data_models import (
+from prakiraan_cuaca_api.deps import (
     DatetimeRangeQueryModel,
     ForecastParamsModel,
+    get_etl_query,
 )
 from prakiraan_cuaca_api.models.protocols import ETLQueryProtocol
 from prakiraan_cuaca_api.utils import merge_forecasts, setup_datetime
 
 router = APIRouter()
-
-
-def get_etl_query() -> ETLQueryProtocol:
-    return etl_query
 
 
 Adm4CodeParam = Annotated[
@@ -40,7 +36,6 @@ DatetimeRangeQuery = Annotated[DatetimeRangeQueryModel, Query()]
 
 
 @router.get("/")
-@router.get("/docs")
 @router.get("/documentation")
 async def get_docs(request: Request) -> HTMLResponse:
     """Get auto generated documentation."""
