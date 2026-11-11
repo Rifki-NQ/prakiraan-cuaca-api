@@ -7,6 +7,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI
 
+from prakiraan_cuaca_api.config import API_TIMEZONE, APP_LOG_LEVEL
 from prakiraan_cuaca_api.deps import etl_query
 from prakiraan_cuaca_api.router import router
 from prakiraan_cuaca_api.utils import register_exception_handlers
@@ -19,11 +20,8 @@ def setup_logging() -> None:
     LOGS_FOLDER = Path("logs")
     LOGS_FOLDER.mkdir(exist_ok=True)
 
-    # define loggers level
-    LOGS_LEVEL = logging.DEBUG
-
     logging.basicConfig(
-        level=LOGS_LEVEL,
+        level=APP_LOG_LEVEL,
         format="%(asctime)s | %(levelname)-8s | %(name)-40s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
@@ -45,14 +43,14 @@ def setup_logging() -> None:
 
 
 @asynccontextmanager
-async def etl_query_setup_and_close(app: FastAPI) -> AsyncGenerator[None]:
-    """Setup and close the etl database on the app startup and teardown."""
+async def app_setup_and_teardown(app: FastAPI) -> AsyncGenerator[None]:
+    logger.info(f"Current API Timezone: {API_TIMEZONE}")
     async with etl_query:
         yield
 
 
 setup_logging()
-app = FastAPI(lifespan=etl_query_setup_and_close)
+app = FastAPI(lifespan=app_setup_and_teardown)
 app.include_router(router)
 register_exception_handlers(app)
 
