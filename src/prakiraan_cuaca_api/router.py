@@ -13,7 +13,7 @@ from prakiraan_cuaca_api.deps import (
 )
 from prakiraan_cuaca_api.models.domain_model import ForecastModel, LocationModel
 from prakiraan_cuaca_api.models.protocols import ETLQueryProtocol
-from prakiraan_cuaca_api.utils import merge_forecasts, setup_datetime
+from prakiraan_cuaca_api.utils import convert_forecasts, setup_datetime
 
 router = APIRouter()
 
@@ -76,12 +76,12 @@ async def get_today_forecast(
         `limit`: no limit by default, when it's given, the returned forecasts
                will be trimmed up to the given limit
     """
-    forecasts_iterable = etl_query.get_forecast_by_range(
+    forecast_rows = await etl_query.get_forecast_by_range(
         forecast_params.adm4_code,
         setup_datetime(API_TIMEZONE).full_day(),
         forecast_params.limit,
     )
-    return await merge_forecasts(forecasts_iterable)
+    return await convert_forecasts(forecast_rows)
 
 
 @router.get("/{adm4_code}/tomorrow")
@@ -99,12 +99,12 @@ async def get_tomorrow_forecast(
         `limit (optional)`: no limit by default, when it's given, the returned forecasts
                           will be trimmed up to the given limit
     """
-    forecasts_iterable = etl_query.get_forecast_by_range(
+    forecast_rows = await etl_query.get_forecast_by_range(
         forecast_params.adm4_code,
         setup_datetime(API_TIMEZONE, timedelta(days=1)).full_day(),
         forecast_params.limit,
     )
-    return await merge_forecasts(forecasts_iterable)
+    return await convert_forecasts(forecast_rows)
 
 
 @router.get("/{adm4_code}/range")
@@ -127,9 +127,9 @@ async def get_forecast_range(
         `limit (optional)`: no limit by default, when it's given, the returned forecasts
                           will be trimmed up to the given limit
     """
-    forecasts_iterable = etl_query.get_forecast_by_range(
+    forecast_rows = await etl_query.get_forecast_by_range(
         forecast_params.adm4_code,
         (dt_range_query.start, dt_range_query.end),
         forecast_params.limit,
     )
-    return await merge_forecasts(forecasts_iterable)
+    return await convert_forecasts(forecast_rows)

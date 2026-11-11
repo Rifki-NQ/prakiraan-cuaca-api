@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from collections.abc import AsyncIterable
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -27,19 +27,19 @@ def setup_datetime(
     return DatetimeModel(datetime.now(tz=timezone) + timedelta)
 
 
-async def merge_forecasts(
-    forecasts_iterable: AsyncIterable[Row[Any]],
+async def convert_forecasts(
+    forecasts: Sequence[Row[Any]],
 ) -> list[ForecastModel]:
     """
-    Convert all forecast into ForecastModel while merging it
-    into a single list.
+    Convert all forecast rows into ForecastModel while
+    appending it into a new list.
     """
-    merged: list[ForecastModel] = []
-    async for forecast in forecasts_iterable:
-        merged.append(ForecastModel.model_validate(forecast))
+    converted: list[ForecastModel] = []
+    for forecast in forecasts:
+        converted.append(ForecastModel.model_validate(forecast))
         # yield control to the event loop for each conversion
         await asyncio.sleep(0)
-    return merged
+    return converted
 
 
 def register_exception_handlers(app: FastAPI) -> None:

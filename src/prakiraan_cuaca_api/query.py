@@ -1,6 +1,5 @@
-import asyncio
 import logging
-from collections.abc import AsyncIterable
+from collections.abc import Sequence
 from datetime import datetime
 from types import TracebackType
 from typing import Any, Self
@@ -24,8 +23,6 @@ logger = logging.getLogger(__name__)
 
 
 class ETLQuery:
-    RESULT_YIELD_PER_VALUE = 24  # server-side rows-per-yield streaming value
-
     def __init__(self, etl_db_url: str) -> None:
         self.etl_db_url = etl_db_url
         self._etl_db: ETLDBContext | None = None
@@ -74,57 +71,41 @@ class ETLQuery:
     ) -> None:
         await self._close_etl_db()
 
-    def get_forecast_by_range(
+    async def get_forecast_by_range(
         self,
         adm4_code: str,
         datetime_range: tuple[datetime, datetime],
         limit: int | None,
-    ) -> AsyncIterable[Row[Any]]:
-        """Return Iterable of weather forecast rows if the range is valid."""
+    ) -> Sequence[Row[Any]]:
+        """
+        Return a sequence of weather forecast rows if the range is valid,
+        EmptyQueryResultError will be raised if the query returned empty rows.
+        """
         start_dt, end_dt = datetime_range
         if start_dt > end_dt:
             raise InvalidDatetimeRangeError(start_dt, end_dt)
-        logger.debug(f"yielding forecasts: {start_dt} to {end_dt}")
-
-        async def _results() -> AsyncIterable[Row[Any]]:
-            """
-            Select then yield each single forecast lazily,
-            while giving the event loop control with: await asyncio.sleep(0),
-            raise error if total yielded is 0.
-            """
-            db = self._get_etl_db()
-            async with db.engine.connect() as conn:
-                stmt = (
-                    select(db.forecast_table)
-                    .where(
-                        db.forecast_table.c.adm4_code == adm4_code,
-                        between(
-                            db.forecast_table.c.forecast_datetime, start_dt, end_dt
-                        ),
-                    )
-                    .order_by(db.forecast_table.c.forecast_datetime)
-                    .limit(limit)
+        db = self._get_etl_db()
+        async with db.engine.connect() as conn:
+            stmt = (
+                select(db.forecast_table)
+                .where(
+                    db.forecast_table.c.adm4_code == adm4_code,
+                    between(db.forecast_table.c.forecast_datetime, start_dt, end_dt),
                 )
-                result = await conn.stream(
-                    stmt, execution_options={"yield_per": self.RESULT_YIELD_PER_VALUE}
-                )
-                total_yielded = 0
-                async for row in result:
-                    yield row
-                    logger.debug(f"yielded forecast date: {row.forecast_datetime}")
-                    await asyncio.sleep(0)
-                    total_yielded += 1
-                if total_yielded == 0:
-                    raise EmptyQueryResultError(
-                        "Forecast not found",
-                        {
-                            "adm4_code": adm4_code,
-                            "start_dt": start_dt.strftime("%d-%m-%Y %H:%M:%S"),
-                            "end_dt": end_dt.strftime("%d-%m-%Y %H:%M:%S"),
-                        },
-                    )
-
-        return _results()
+                .order_by(db.forecast_table.c.forecast_datetime)
+                .limit(limit)
+            )
+            result = (await conn.execute(stmt)).all()
+        if not result:
+            raise EmptyQueryResultError(
+                "Forecast not found",
+                {
+                    "adm4_code": adm4_code,
+                    "start_dt": start_dt.strftime("%d-%m-%Y %H:%M:%S"),
+                    "end_dt": end_dt.strftime("%d-%m-%Y %H:%M:%S"),
+                },
+            )
+        return result
 
     async def get_forecast_location(self, adm4_code: str) -> Row[Any]:
         """
@@ -137,10 +118,10 @@ class ETLQuery:
             stmt = select(db.location_table).where(
                 db.location_table.c.adm4_code == adm4_code
             )
-            row_result = (await conn.execute(stmt)).one_or_none()
-        if row_result is None:
+            result = (await conn.execute(stmt)).one_or_none()
+        if result is None:
             raise EmptyQueryResultError("Location not found", {"adm4_code": adm4_code})
-        return row_result
+        return result
 
     def _get_etl_db(self) -> ETLDBContext:
         """get the db attributes, can be called after setup_etl_db()."""
