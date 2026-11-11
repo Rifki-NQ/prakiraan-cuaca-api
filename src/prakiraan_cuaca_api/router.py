@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi.openapi import docs
+from fastapi.responses import HTMLResponse
 
 from prakiraan_cuaca_api.config import API_TIMEZONE
 from prakiraan_cuaca_api.deps import etl_query
@@ -37,6 +39,17 @@ ForecastParams = Annotated[ForecastParamsModel, Depends(get_forecast_params)]
 DatetimeRangeQuery = Annotated[DatetimeRangeQueryModel, Query()]
 
 
+@router.get("/")
+@router.get("/docs")
+@router.get("/documentation")
+async def get_docs(request: Request) -> HTMLResponse:
+    """Get auto generated documentation."""
+    return docs.get_swagger_ui_html(
+        openapi_url=request.app.openapi_url,
+        title=f"{request.app.title} - Swagger UI",
+    )
+
+
 @router.get("/{adm4_code}")
 async def get_forecast_location(
     etl_query: EtlQuery, adm4_code: Adm4CodeParam
@@ -45,7 +58,7 @@ async def get_forecast_location(
     Get forecast location information.
 
     Path Parameters:
-        adm4_code: Indonesia's administrative area code,
+        `adm4_code`: Indonesia's administrative area code,
                    down to the village level
     """
     return (await etl_query.get_forecast_location(adm4_code))._asdict()
@@ -59,10 +72,11 @@ async def get_today_forecast(
     Get today forecast, which based on the API_TIMEZONE value in project environment (.env).
 
     Path Parameters:
-        adm4_code: Indonesia's administrative area code that defines
+        `adm4_code`: Indonesia's administrative area code that defines
                    which village forecasts to get
+
     Query Parameters:
-        limit: no limit by default, when it's given, the returned forecasts
+        `limit`: no limit by default, when it's given, the returned forecasts
                will be trimmed up to the given limit
     """
     forecasts_iterable = etl_query.get_forecast_by_range(
@@ -81,10 +95,11 @@ async def get_tomorrow_forecast(
     Get tomorrow forecast, which based on the API_TIMEZONE value in project environment (.env).
 
     Path Parameters:
-        adm4_code: Indonesia's administrative area code that defines
+        `adm4_code`: Indonesia's administrative area code that defines
                    which village's weather forecast to get
+
     Query Parameters:
-        limit (optional): no limit by default, when it's given, the returned forecasts
+        `limit (optional)`: no limit by default, when it's given, the returned forecasts
                           will be trimmed up to the given limit
     """
     forecasts_iterable = etl_query.get_forecast_by_range(
@@ -106,12 +121,13 @@ async def get_forecast_range(
     the start and end value can be either datetime or date type.
 
     Path Parameters:
-        adm4_code: Indonesia's administrative area code that defines
+        `adm4_code`: Indonesia's administrative area code that defines
                    which village's weather forecast to get
+
     Query Parameters:
-        start: define the start range of the forecast, can be either datetime or date type
-        end: define the end range of the forecast, can be either datetime or data type
-        limit (optional): no limit by default, when it's given, the returned forecasts
+        `start`: define the start range of the forecast, can be either datetime or date type
+        `end`: define the end range of the forecast, can be either datetime or data type
+        `limit (optional)`: no limit by default, when it's given, the returned forecasts
                           will be trimmed up to the given limit
     """
     forecasts_iterable = etl_query.get_forecast_by_range(
