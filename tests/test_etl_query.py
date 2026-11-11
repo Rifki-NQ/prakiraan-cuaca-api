@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator, AsyncIterable
+from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 from unittest.mock import patch
 
@@ -132,13 +132,13 @@ class TestGetForecastByRange:
             FAKE_ETL_DATA_INFO["oldest_forecast_datetime"],
             FAKE_ETL_DATA_INFO["newest_forecast_datetime"],
         )
-        results = seeded_etl_query.get_forecast_by_range(
+        result = await seeded_etl_query.get_forecast_by_range(
             adm4_code=FAKE_ETL_DATA_INFO["adm4_code"],
             datetime_range=dt_range,
             limit=None,
         )
-        assert isinstance(results, AsyncIterable)
-        assert len([r async for r in results]) == 24
+        assert isinstance(result, Sequence)
+        assert len(result) == 24
 
     async def test_first_row_value(
         self,
@@ -149,17 +149,14 @@ class TestGetForecastByRange:
             FAKE_ETL_DATA_INFO["oldest_forecast_datetime"],
             FAKE_ETL_DATA_INFO["oldest_forecast_datetime"],
         )
-        results = [
-            r
-            async for r in seeded_etl_query.get_forecast_by_range(
-                adm4_code=FAKE_ETL_DATA_INFO["adm4_code"],
-                datetime_range=dt_range,
-                limit=None,
-            )
-        ]
-        assert len(results) == 1, "results should only return 1 row of forecast data!"
+        result = await seeded_etl_query.get_forecast_by_range(
+            adm4_code=FAKE_ETL_DATA_INFO["adm4_code"],
+            datetime_range=dt_range,
+            limit=None,
+        )
+        assert len(result) == 1, "result should only return 1 row of forecast data!"
         # this should be True, since the seeded data comes from FAKE_WEATHER_FORECAST_DATA
-        assert results[0]._asdict() == FAKE_WEATHER_FORECAST_DATA[0]
+        assert result[0]._asdict() == FAKE_WEATHER_FORECAST_DATA[0]
 
     async def test_empty_result_error(
         self,
@@ -168,23 +165,19 @@ class TestGetForecastByRange:
         dt_range = (
             # deliberately a range with no matching weather forecast,
             # i.e. no forecast_datetime falls between these two dates
-            # in the mocked_data
+            # based on the infra/fake_data/fake_etl_data/FAKE_WEATHER_FORECAST_DATA
             datetime(2026, 8, 10, 0, 0, 0),
             datetime(2026, 8, 11, 0, 0, 0),
         )
-        # this does not raises EmptyQueryResultError
-        # since this return only the AsyncIterable object
-        results = seeded_etl_query.get_forecast_by_range(
-            adm4_code=FAKE_ADM4_CODE, datetime_range=dt_range, limit=None
-        )
-        with pytest.raises(EmptyQueryResultError) as exc_info:
-            # this raises because the AsyncIterable is iterated or consumed
-            [r async for r in results]
-        assert exc_info.value.query.get("adm4_code") == FAKE_ADM4_CODE
-        assert exc_info.value.query.get("start_dt") == dt_range[0].strftime(
+        with pytest.raises(EmptyQueryResultError) as exec_info:
+            await seeded_etl_query.get_forecast_by_range(
+                adm4_code=FAKE_ADM4_CODE, datetime_range=dt_range, limit=None
+            )
+        assert exec_info.value.query.get("adm4_code") == FAKE_ADM4_CODE
+        assert exec_info.value.query.get("start_dt") == dt_range[0].strftime(
             "%d-%m-%Y %H:%M:%S"
         )
-        assert exc_info.value.query.get("end_dt") == dt_range[1].strftime(
+        assert exec_info.value.query.get("end_dt") == dt_range[1].strftime(
             "%d-%m-%Y %H:%M:%S"
         )
 
@@ -192,25 +185,23 @@ class TestGetForecastByRange:
         "limit, expected_total_rows",
         [
             (None, 24),  # when limit == None, all rows are returned
-            (2, 2),
+            (2, 2),  # when limit != None, the returned rows are trimmed down
         ],
     )
     async def test_limit_param(
         self, seeded_etl_query: ETLQuery, limit: int | None, expected_total_rows: int
     ) -> None:
-        """
-        Test if the returned rows is trimmed when limit != None.
-        """
+        """Test if the returned rows is trimmed down when limit != None."""
         dt_range = (
             FAKE_ETL_DATA_INFO["oldest_forecast_datetime"],
             FAKE_ETL_DATA_INFO["newest_forecast_datetime"],
         )
-        results = seeded_etl_query.get_forecast_by_range(
+        result = await seeded_etl_query.get_forecast_by_range(
             adm4_code=FAKE_ETL_DATA_INFO["adm4_code"],
             datetime_range=dt_range,
             limit=limit,
         )
-        assert len([r async for r in results]) == expected_total_rows
+        assert len(result) == expected_total_rows
 
 
 class TestGetForecastLocation:
@@ -231,16 +222,16 @@ class TestGetForecastLocation:
     "start_dt", [datetime(2020, 2, 2, 1, 1, 1), datetime(2020, 2, 3)]
 )
 async def test_invalid_datetime_range(start_dt: datetime) -> None:
-    """InvalidDatetimeRangeError should be raised when start_dt is greater than end_dt"""
+    """InvalidDatetimeRangeError should be raised when start_dt is greater than end_dt."""
     end_dt = datetime(2020, 2, 2)
     etl_query = ETLQuery(etl_db_url=etl_db_url)
     datetime_range = (start_dt, end_dt)
-    with pytest.raises(InvalidDatetimeRangeError) as exc_info:
-        etl_query.get_forecast_by_range(
+    with pytest.raises(InvalidDatetimeRangeError) as exec_info:
+        await etl_query.get_forecast_by_range(
             adm4_code="fake adm4_code", datetime_range=datetime_range, limit=None
         )
-    assert exc_info.value.start_dt == start_dt
-    assert exc_info.value.end_dt == end_dt
+    assert exec_info.value.start_dt == start_dt
+    assert exec_info.value.end_dt == end_dt
 
 
 def test_get_etl_db_before_setup_etl_db() -> None:

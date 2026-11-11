@@ -3,7 +3,7 @@ default_install_hook_types: [pre-commit, pre-push]
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.1
+    rev: v0.17.4
     hooks:
       - id: ruff-check
         args: [ --fix ]
@@ -18,18 +18,17 @@ repos:
         types: [python]
         require_serial: true
 
-      # skip tests in pre-commit for now (early development phase)
-      #- id: pytest-unit
-      #  name: pytest (unit test only)
-      #  entry: pytest -m "not integration"
-      #  language: system
-      #  pass_filenames: false
-      #  always_run: true
+      - id: pytest-unit
+        name: pytest (unit test only)
+        entry: pytest -m "not integration"
+        language: system
+        pass_filenames: false
+        always_run: true
 
-      #- id: pytest-full
-      #  name: pytest (full test)
-      #  entry: pytest -m "not prod_db"
-      #  language: system
-      #  pass_filenames: false
-      #  always_run: true
-      #  stages: [pre-push]
+      - id: pytest-full
+        name: pytest (full test)
+        entry: pytest -m "not prod_db"
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

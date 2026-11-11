@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterable
+from collections.abc import Sequence
 from datetime import datetime
 from types import TracebackType
 from typing import Any, Protocol, Self
@@ -14,10 +14,10 @@ class ETLQueryProtocol(Protocol):
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> None: ...
-    def get_forecast_by_range(
+    async def get_forecast_by_range(
         self,
         adm4_code: str,
         datetime_range: tuple[datetime, datetime],
         limit: int | None,
-    ) -> AsyncIterable[Row[Any]]: ...
+    ) -> Sequence[Row[Any]]: ...
     async def get_forecast_location(self, adm4_code: str) -> Row[Any]: ...
