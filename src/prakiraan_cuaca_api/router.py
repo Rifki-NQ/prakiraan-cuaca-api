@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Request
@@ -11,6 +11,7 @@ from prakiraan_cuaca_api.deps import (
     ForecastParamsModel,
     get_etl_query,
 )
+from prakiraan_cuaca_api.models.domain_model import ForecastModel, LocationModel
 from prakiraan_cuaca_api.models.protocols import ETLQueryProtocol
 from prakiraan_cuaca_api.utils import merge_forecasts, setup_datetime
 
@@ -29,7 +30,6 @@ def get_forecast_params(
     return ForecastParamsModel(adm4_code, limit)
 
 
-ForecastRows = dict[str, str | int | float | datetime | None]
 EtlQuery = Annotated[ETLQueryProtocol, Depends(get_etl_query)]
 ForecastParams = Annotated[ForecastParamsModel, Depends(get_forecast_params)]
 DatetimeRangeQuery = Annotated[DatetimeRangeQueryModel, Query()]
@@ -48,7 +48,7 @@ async def get_docs(request: Request) -> HTMLResponse:
 @router.get("/{adm4_code}")
 async def get_forecast_location(
     etl_query: EtlQuery, adm4_code: Adm4CodeParam
-) -> dict[str, str | int | float]:
+) -> LocationModel:
     """
     Get forecast location information.
 
@@ -56,13 +56,15 @@ async def get_forecast_location(
         `adm4_code`: Indonesia's administrative area code,
                    down to the village level
     """
-    return (await etl_query.get_forecast_location(adm4_code))._asdict()
+    return LocationModel.model_validate(
+        (await etl_query.get_forecast_location(adm4_code))._asdict()
+    )
 
 
 @router.get("/{adm4_code}/today")
 async def get_today_forecast(
     etl_query: EtlQuery, forecast_params: ForecastParams
-) -> list[ForecastRows]:
+) -> list[ForecastModel]:
     """
     Get today forecast, which based on the API_TIMEZONE value in project environment (.env).
 
@@ -85,7 +87,7 @@ async def get_today_forecast(
 @router.get("/{adm4_code}/tomorrow")
 async def get_tomorrow_forecast(
     etl_query: EtlQuery, forecast_params: ForecastParams
-) -> list[ForecastRows]:
+) -> list[ForecastModel]:
     """
     Get tomorrow forecast, which based on the API_TIMEZONE value in project environment (.env).
 
@@ -110,7 +112,7 @@ async def get_forecast_range(
     etl_query: EtlQuery,
     forecast_params: ForecastParams,
     dt_range_query: DatetimeRangeQuery,
-) -> list[ForecastRows]:
+) -> list[ForecastModel]:
     """
     Get forecasts from start to end range,
     the start and end value can be either datetime or date type.

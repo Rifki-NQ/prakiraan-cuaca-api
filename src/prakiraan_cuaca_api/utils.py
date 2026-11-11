@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterable
 from datetime import datetime, timedelta
@@ -9,7 +10,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import Row
 
 from prakiraan_cuaca_api.exceptions import AppError, EmptyQueryResultError
-from prakiraan_cuaca_api.models.data_models import DatetimeModel
+from prakiraan_cuaca_api.models.domain_model import DatetimeModel, ForecastModel
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,17 @@ def setup_datetime(
 
 async def merge_forecasts(
     forecasts_iterable: AsyncIterable[Row[Any]],
-) -> list[dict[str, str | int | float | datetime | None]]:
+) -> list[ForecastModel]:
     """
-    Return a list of forecast dicts from the forecasts_iterable.
+    Convert all forecast into ForecastModel while merging it
+    into a single list.
     """
-    return [f._asdict() async for f in forecasts_iterable]
+    merged: list[ForecastModel] = []
+    async for forecast in forecasts_iterable:
+        merged.append(ForecastModel.model_validate(forecast))
+        # yield control to the event loop for each conversion
+        await asyncio.sleep(0)
+    return merged
 
 
 def register_exception_handlers(app: FastAPI) -> None:

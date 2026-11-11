@@ -26,6 +26,7 @@ def _get_api_timezone() -> zoneinfo.ZoneInfo:
         raise ConfigError(f"Invalid API_TIMEZONE: {api_timezone}")
 
 
+# API_TIMEZONE is used as the API today and tomorrow reference
 API_TIMEZONE = _get_api_timezone()
 
 
