@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 
 FAKE_ETL_DATA_INFO: dict[str, Any] = {
-    "adm4_code": "32.16.21.2005",
+    "adm4_code": "32.16.20.2005",
     "oldest_forecast_datetime": datetime(2026, 11, 9, 0, 0, 0),
     "newest_forecast_datetime": datetime(2026, 11, 9, 23, 0, 0),
 }

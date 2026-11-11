@@ -42,6 +42,7 @@ markers = [
     "integration: mark test as integration test",
     "prod_db: hits the production database directly (reads/creates tables, never drops)"
 ]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.mypy]
 mypy_path = "src"
