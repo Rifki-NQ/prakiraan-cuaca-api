@@ -1,38 +1,20 @@
 from datetime import timedelta
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi import APIRouter, Request
 from fastapi.openapi import docs
 from fastapi.responses import HTMLResponse
 
 from prakiraan_cuaca_api.config import API_TIMEZONE
 from prakiraan_cuaca_api.deps import (
-    DatetimeRangeQueryModel,
-    ForecastParamsModel,
-    get_etl_query,
+    Adm4CodeParam,
+    DatetimeRangeQuery,
+    EtlQuery,
+    ForecastParams,
 )
 from prakiraan_cuaca_api.models.domain_model import ForecastModel, LocationModel
-from prakiraan_cuaca_api.models.protocols import ETLQueryProtocol
 from prakiraan_cuaca_api.utils import convert_forecasts, setup_datetime
 
 router = APIRouter()
-
-
-Adm4CodeParam = Annotated[
-    str, Path(pattern=r"^\d{2}\.\d{2}\.\d{2}\.\d{4}$", examples=["32.16.21.2003"])
-]
-
-
-def get_forecast_params(
-    adm4_code: Adm4CodeParam,
-    limit: Annotated[int, Query(gt=0)] | None = None,
-) -> ForecastParamsModel:
-    return ForecastParamsModel(adm4_code, limit)
-
-
-EtlQuery = Annotated[ETLQueryProtocol, Depends(get_etl_query)]
-ForecastParams = Annotated[ForecastParamsModel, Depends(get_forecast_params)]
-DatetimeRangeQuery = Annotated[DatetimeRangeQueryModel, Query()]
 
 
 @router.get("/")

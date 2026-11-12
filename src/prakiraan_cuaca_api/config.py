@@ -12,6 +12,7 @@ load_dotenv()
 
 
 APP_LOG_LEVEL = logging.INFO
+GLOBAL_RATE_LIMIT = "30/minute"  # global rate limit configuration used by slowapi
 
 
 def _get_api_timezone() -> zoneinfo.ZoneInfo:

@@ -6,8 +6,11 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
+from slowapi import Limiter
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
-from prakiraan_cuaca_api.config import API_TIMEZONE, APP_LOG_LEVEL
+from prakiraan_cuaca_api.config import API_TIMEZONE, APP_LOG_LEVEL, GLOBAL_RATE_LIMIT
 from prakiraan_cuaca_api.deps import etl_query
 from prakiraan_cuaca_api.router import router
 from prakiraan_cuaca_api.utils import register_exception_handlers
@@ -50,9 +53,12 @@ async def app_setup_and_teardown(app: FastAPI) -> AsyncGenerator[None]:
 
 
 setup_logging()
+limiter = Limiter(key_func=get_remote_address, default_limits=[GLOBAL_RATE_LIMIT])
 app = FastAPI(lifespan=app_setup_and_teardown)
-app.include_router(router)
+app.state.limiter = limiter
 register_exception_handlers(app)
+app.add_middleware(SlowAPIMiddleware)
+app.include_router(router)
 
 
 def main() -> None:
@@ -62,7 +68,7 @@ def main() -> None:
         "prakiraan_cuaca_api.main:app",
         host="127.0.0.1",
         port=8000,
-        reload=True,
+        reload=False,
     )
 
 

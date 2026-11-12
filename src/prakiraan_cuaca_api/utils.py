@@ -6,7 +6,9 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import Row
 
 from prakiraan_cuaca_api.exceptions import AppError, EmptyQueryResultError
@@ -36,13 +38,23 @@ async def convert_forecasts(
     """
     converted: list[ForecastModel] = []
     for forecast in forecasts:
-        converted.append(ForecastModel.model_validate(forecast))
+        converted.append(ForecastModel.model_validate(forecast._asdict()))
         # yield control to the event loop for each conversion
         await asyncio.sleep(0)
     return converted
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_exceeded_handler(
+        request: Request, exc: RateLimitExceeded
+    ) -> Response:
+        logger.debug(
+            f"Rate limited, client ip address: {request.client.host if request.client else 'no client info'}, "
+            f"detail: {exc!r}"
+        )
+        return _rate_limit_exceeded_handler(request, exc)
+
     @app.exception_handler(EmptyQueryResultError)
     async def empty_query_result_handler(
         request: Request, exc: EmptyQueryResultError
